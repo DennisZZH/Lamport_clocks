@@ -40,6 +40,7 @@ int main() {
     pid = "Process " + pid;
 
     // Build a TCP socket connecting with the network process to send and receive
+    // Send the server the pid so that it knows who this process is
 
     // Open communication thread and processing thread
     pthread_t comm, proc;
