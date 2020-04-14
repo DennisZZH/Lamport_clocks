@@ -1,8 +1,0 @@
-syntax = "proto2";
-
-message MyMessage {
-    required uint32 source = 1;
-    required uint32 dst =2;
-    required uint32 clock = 3;
-    optional string text = 4;
-}

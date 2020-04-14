@@ -9,13 +9,6 @@
 #include <netdb.h> 
 #include <errno.h>
 
-// An event struct which is inserted in the queue
-struct Event{
-    // The type of events, 0 for send event, 1 for receive event, 2 for other events
-    u_int type;
-    // For send and receive event, set the message. Else, set it to ""
-    std::string message;
-};
 
 void *procThread(void* arg) {
     // parameters: *arg: 1. contains a queue pointer.
@@ -30,7 +23,7 @@ void *commThread(void* arg) {
 
 int main() {
     // Create a new queue for events and a clock
-    std::queue<Event> events;
+    std::queue<Msg> events;
     u_int clock = 0;
 
     // Assign process id
