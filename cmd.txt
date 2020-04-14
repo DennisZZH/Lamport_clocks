@@ -1,3 +1,4 @@
 protoc -I=. --cpp_out=. ./Msg.proto
 
-c++ -std=c++11 client.cpp Msg.pb.cc -o client `pkg-config --cflags --libs protobuf`
+process: c++ -std=c++11 client.cpp Msg.pb.cc -o client `pkg-config --cflags --libs protobuf`
+network: c++ -std=c++11 Network.cpp Msg.pb.cc -o Network `pkg-config --cflags --libs protobuf`
