@@ -1,0 +1,3 @@
+protoc -I=. --cpp_out=. ./Msg.proto
+
+c++ -std=c++11 client.cpp Msg.pb.cc -o client `pkg-config --cflags --libs protobuf`
