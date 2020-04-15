@@ -63,16 +63,19 @@ void *procThread(void* arg) {
 
     while(true){
         if(!events.empty()){
+            //std::cout<<"Before: Size of queue = "<<events.size()<<std::endl;
             // Pop events
             m = safe_pop();
+            //std::cout<<"After: Size of queue = "<<events.size()<<std::endl;
             // if it is local event
             if(m.type() == 0){
+                std::cout << "Local event: (\"" << m.text() << "\") of Process " << m.src() << "\n";
                 cur_clock += 1;
                 m.set_clock(cur_clock);
             }
             // if it is recv event
             else if(m.type() == 2){
-                std::cout << "Receive event: (\"" << m.text() << "\") from Process " << m.src() << "\n";
+                //std::cout << "Receive event: (\"" << m.text() << "\") from Process " << m.src() << "\n";
                 if(m.clock() > cur_clock + 1){
                     cur_clock = m.clock();
                 }else{
@@ -82,7 +85,7 @@ void *procThread(void* arg) {
             }
             // if it is send event
             else if(m.type() == 1){
-                std::cout << "Send event: (\"" << m.text() << "\") to Process " << m.dst() << "\n";
+                //std::cout << "Send event: (\"" << m.text() << "\") to Process " << m.dst() << "\n";
                 cur_clock += 1;
                 m.set_clock(cur_clock);
 
@@ -118,10 +121,12 @@ void *commThread(void* arg) {
             msg_str.append(buf);
             bzero(buf, sizeof(buf));
         }
+
         // Cast std::string to Msg
         m.ParseFromString(msg_str);
         // Add a receive event to std::queue
         safe_push(m);
+        to_read = sizeof(Msg);
     }
 }
 
