@@ -29,12 +29,12 @@ void *manageProcesses(void* args) {
     char buffer[sizeof(Msg)];
     int read_size, sizeleft;
     while (!quit) {
-        std::cout << "Waiting and receving the message from process " << procNum << "...";
+        std::cout << "Waiting and receving the message from process " << procNum + 1 << "...";
         sizeleft = sizeof(Msg);
         std::string strMessage;
         while (sizeleft != 0) {
             if ((read_size = recv(cur_sockfd, buffer, sizeof(buffer), 0)) < 0) {
-                std::cerr << "Failed receving from process " << procNum << "\n";
+                std::cerr << "Failed receving from process " << procNum + 1 << "\n";
                 exit(0);
             }
             strMessage.append(buffer);
@@ -47,7 +47,7 @@ void *manageProcesses(void* args) {
 
         // Close the socket if type == 0
         if (m.type() == 3) {
-            std::cout << "Process " << procNum << " exits.\n";
+            std::cout << "Process " << procNum + 1 << " exits.\n";
             quit = true;
         }
 
@@ -61,7 +61,7 @@ void *manageProcesses(void* args) {
                 send_socket = argu->sockfd[1];
             }
             else if (m.dst() == 3) {
-                send_socket = argu->sockfd[3];
+                send_socket = argu->sockfd[2];
             }
 
             m.set_type(2);
@@ -137,18 +137,17 @@ int main(){
 
     // Create two other threads to handle messages from process 2 and 3
     pthread_t tid[2];
+    argus procArgu[3];
     for (int i = 0; i < 2; i++) {
-        argus procArgu;
-        procArgu.sockfd = new_sockets;
-        procArgu.procNum = i + 1;
-        pthread_create(tid + i, NULL, manageProcesses, (void*)&procArgu);
+        procArgu[i + 1].sockfd = new_sockets;
+        procArgu[i + 1].procNum = i + 1;
+        pthread_create(tid + i, NULL, manageProcesses, (void*)(&procArgu[i+1]));
     }
 
     // Call function for main thread
-    argus procArgu;
-    procArgu.sockfd = new_sockets;
-    procArgu.procNum = 0;
-    manageProcesses((void*)&procArgu);
+    procArgu[0].sockfd = new_sockets;
+    procArgu[0].procNum = 0;
+    manageProcesses((void*)(&procArgu[0]));
 
     // pthread_join for other two threads
     for (int i = 0; i < 2; i++) {
