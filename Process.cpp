@@ -14,63 +14,127 @@
 
 #define PPORT 8000
 
-using namespace std;
-
 char* server_ip = "192.168.1.10";
 int myport;
+int sockfd;
 
-queue<Msg> events;
+std::queue<Msg> events;  // Share resource, protected
+std::vector<Msg> clocks;
 u_int cur_clock = 0;
 u_int mypid;
+
+pthread_t comm, proc;
+pthread_mutex_t lock;
 
 
 int safe_push(Msg m){
     int status = 0;
-    
+    pthread_mutex_lock(&lock);
+    events.push(m);
+    pthread_mutex_unlock(&lock);
     return status;
 }
 
 
 Msg safe_pop(){
-
+    Msg m;
+    pthread_mutex_lock(&lock);
+    m = events.front();
+    events.pop();
+    pthread_mutex_unlock(&lock);
+    return m;
 }
 
 
-void print_events(queue<Msg> es){
-    cout<<"Process "<<mypid<<" "<<"print clock: ";
-    while(!es.empty()){
-        cout<<es.front().clock<<" ";
-        es.pop();
+void print_clocks(){
+    std::cout<<"Process "<<mypid<<" "<<"print clock: ";
+    for(auto i = clocks.begin(); i != clocks.end(); i++){
+        std::cout<<i->clock<<" ";
     }
-    cout<<endl;
+    std::cout<<std::endl;
 }
 
 
 
 void *procThread(void* arg) {
-    // parameters: *arg: 1. contains a queue pointer.
-    // functionality: check if the queue is empty. If not, pop the events, print them, and calculate the new clock value.
+    // Loop to check if the std::queue is empty. If not, pop the event and calculate the new clock value for it and process.
+    Msg m;
+    std::string msg_str;
+
+    while(true){
+        if(events.empty() == false){
+            m = safe_pop();
+            // if it is local event
+            if(m.type == 0){
+                m.clock = ++cur_clock;
+            }
+            // if it is recv event
+            else if(m.type == 2){
+                if(m.clock > cur_clock + 1){
+                    cur_clock = m.clock;
+                }else{
+                    m.clock = ++cur_clock;
+                }
+            }
+            // if it is send event
+            else if(m.type == 1){
+                m.clock = ++cur_clock;
+
+                m.SerializeToString(&msg_str);
+                if(send(sockfd, msg_str.c_str(), sizeof(Msg), 0) < 0){
+                    std::cerr<<"Error: procThread failed to send the message!"<<std::endl;
+                    exit(0);
+                }
+            }
+            // push to clocks queue
+            clocks.push_back(m);
+        }
+    }
 }
 
 
 void *commThread(void* arg) {
-    // parameters: *arg: 1. should contain a queue pointer. Insert the receive event to this queue
-                      // 2. a pointer of sockfd built in main thread
-    // functionality: listen and receive from the socket. Add a receive event to the queue if received
+    // Loop to listen and receive from the socket. Add a receive event to the std::queue if received
+    char buf[100];
+    char* bufptr = (char*) buf;
+    int to_read = sizeof(Msg), siz_read = 0;
+    std::string msg_str;
+    Msg m;
+
+    while(true){
+        // Receive message
+        while(to_read > 0){
+            siz_read = recv(sockfd, bufptr, to_read, 0);
+            if(siz_read < 0){
+                std::cerr<<"Error: commThread failed to recv the message!"<<std::endl;
+                exit(0);
+            }
+            to_read -= siz_read;
+            bufptr += siz_read;
+        }
+        // Cast std::string to Msg
+        msg_str = std::string(buf);
+        m.ParseFromString(msg_str);
+        // Add a receive event to std::queue
+        if(safe_push(m) < 0){
+            std::cerr<<"Error: commThread failed to safe push to std::queue!"<<std::endl;
+            exit(0);
+        }
+    }
 }
 
 
 int main() {
    
     // Assign process id
-    cout << "Process id: ";
-    cin >> mypid;
+    std::cout << "Process id: ";
+    std::cin >> mypid;
     
     // Build a TCP socket connecting with the network process
     myport = PPORT + mypid;
     struct sockaddr_in server_address;
 
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd == -1) {
         printf("Socket creation failed.\n");
         exit(0);
@@ -88,52 +152,67 @@ int main() {
     }
 
     // Open communication thread and processing thread
-    pthread_t comm, proc;
-
     pthread_create(&comm, NULL, &commThread, NULL);
-
     pthread_create(&proc, NULL, &procThread, NULL);
+    if(pthread_mutex_init(&lock, NULL) != 0) { 
+        std::cerr<<"Error: mutex init has failed!"<<std::endl; 
+        exit(0);
+    } 
 
     // A while loop taking the user input
-    int type;
-    string txt;
+    int input;
+    std::string txt;
     Msg m;
     u_int pid_dest;
 
-    cout<<"Choose  0)add local event  1)add send event  2)print clock  3)quit :";
-    cin>>type;
+    std::cout<<"Choose  0)add local event  1)add send event  2)print clock  3)quit :";
+    std::cin>>input;
 
-    while(type != 3){
+    while(input != 3){
 
-        // If print events
-        if(type == 2){
-            print_events(events);
+        // If print clocks
+        if(input == 2){
+            print_clocks();
             continue;
         }
 
-        // Keep taking user input, creating events
-        cout<<"Input event name/message: ";
-        cin>>txt;
+        else if(input == 0 || input == 1){
 
-        // Create Message
-        m.type = type;
-        m.text = txt;
+            // Keep taking user input, creating events
+            std::cout<<"Input event name/message: ";
+            std::cin>>txt;
 
-        // If input a send event
-        if(type == 1){
-            cout<<"Input receiver Process id: ";
-            cin>>pid_dest;
-            m.dst = pid_dest;
-            m.src = mypid;
+            // Create Message
+            m.type = input;
+            m.clock = 0; // Default, waiting to be set when being processed
+            m.text = txt;
+
+            // If input a send event
+            if(input == 1){
+                std::cout<<"Input receiver Process id: ";
+                std::cin>>pid_dest;
+                m.dst = pid_dest;
+                m.src = mypid;
+            }
+
+            // push event to std::queue
+            if(safe_push(m) < 0){
+                std::cerr<<"Error: mainThread failed to safe push to std::queue!"<<std::endl;
+                exit(0);
+            }
+
+            // clear buf
+            m.Clear();
+            txt.clear();
+
         }
-        safe_push(m);
 
-        // clear buf
-        m.Clear();
-        txt.clear();
+        else{
+            std::cout<<"Invalid input! Please input again."<<std::endl;
+        }
 
-        cout<<"Choose  0)add local event  1)add send event  2)print clock  3)quit :";
-        cin>>type;
+        std::cout<<"Choose  0)add local event  1)add send event  2)print clock  3)quit :";
+        std::cin>>input;
     }
 
     // Kill/Join proc and comm
