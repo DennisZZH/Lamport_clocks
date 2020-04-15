@@ -147,7 +147,7 @@ int main(){
     // Call function for main thread
     argus procArgu;
     procArgu.sockfd = new_sockets;
-    procArgu.procNum = 1;
+    procArgu.procNum = 0;
     manageProcesses((void*)&procArgu);
 
     // pthread_join for other two threads
