@@ -63,6 +63,7 @@ void *procThread(void* arg) {
 
     while(true){
         if(!events.empty()){
+            // Pop events
             m = safe_pop();
             // if it is local event
             if(m.type() == 0){
