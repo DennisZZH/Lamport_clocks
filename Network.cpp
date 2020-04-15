@@ -46,7 +46,7 @@ void *manageProcesses(void* args) {
         m.ParseFromString(strMessage);
 
         // Close the socket if type == 0
-        if (m.type() == 0) {
+        if (m.type() == 3) {
             std::cout << "Process " << procNum << " exits.\n";
             quit = true;
         }
