@@ -14,7 +14,7 @@
 
 #define PPORT 8000
 
-char* server_ip = "192.168.1.10";
+char* server_ip = "127.0.0.1";
 int myport;
 int sockfd;
 
@@ -49,7 +49,7 @@ Msg safe_pop(){
 void print_clocks(){
     std::cout<<"Process "<<mypid<<" "<<"print clock: ";
     for(auto i = clocks.begin(); i != clocks.end(); i++){
-        std::cout<<i->clock<<" ";
+        std::cout<<i->clock()<<" ";
     }
     std::cout<<std::endl;
 }
@@ -65,20 +65,23 @@ void *procThread(void* arg) {
         if(events.empty() == false){
             m = safe_pop();
             // if it is local event
-            if(m.type == 0){
-                m.clock = ++cur_clock;
+            if(m.type() == 0){
+                cur_clock += 1;
+                m.set_clock(cur_clock);
             }
             // if it is recv event
-            else if(m.type == 2){
-                if(m.clock > cur_clock + 1){
-                    cur_clock = m.clock;
+            else if(m.type() == 2){
+                if(m.clock() > cur_clock + 1){
+                    cur_clock = m.clock();
                 }else{
-                    m.clock = ++cur_clock;
+                    cur_clock += 1;
+                    m.set_clock(cur_clock);
                 }
             }
             // if it is send event
-            else if(m.type == 1){
-                m.clock = ++cur_clock;
+            else if(m.type() == 1){
+                cur_clock += 1;
+                m.set_clock(cur_clock);
 
                 m.SerializeToString(&msg_str);
                 if(send(sockfd, msg_str.c_str(), sizeof(Msg), 0) < 0){
@@ -183,16 +186,16 @@ int main() {
             std::cin>>txt;
 
             // Create Message
-            m.type = input;
-            m.clock = 0; // Default, waiting to be set when being processed
-            m.text = txt;
+            m.set_type(input);
+            m.set_clock(0); // Default, waiting to be set when being processed
+            m.set_text(txt);
 
             // If input a send event
             if(input == 1){
                 std::cout<<"Input receiver Process id: ";
                 std::cin>>pid_dest;
-                m.dst = pid_dest;
-                m.src = mypid;
+                m.set_dst(pid_dest);
+                m.set_src(mypid);
             }
 
             // push event to std::queue
