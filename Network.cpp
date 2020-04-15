@@ -64,6 +64,9 @@ void *manageProcesses(void* args) {
                 send_socket = argu->sockfd[3];
             }
 
+            m.set_type(2);
+            strMessage = m.SerializeAsString();
+
             // Send the message
             int send_size = 0;
             std::cout << "Sending the message from " << m.src() << " to " << m.dst() << "...";
