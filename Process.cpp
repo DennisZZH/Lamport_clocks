@@ -71,6 +71,7 @@ void *procThread(void* arg) {
             }
             // if it is recv event
             else if(m.type() == 2){
+                std::cout << "Receive event (\"" << m.text() << "\") from Process " << m.src() << "\n";
                 if(m.clock() > cur_clock + 1){
                     cur_clock = m.clock();
                 }else{
@@ -168,10 +169,10 @@ int main() {
     Msg m;
     u_int pid_dest;
 
-    std::cout<<"Choose  0)add local event  1)add send event  2)print clock  3)quit :";
-    std::cin>>input;
-
     while(input != 3){
+        
+        std::cout<<"Choose  0)add local event  1)add send event  2)print clock  3)quit :";
+        std::cin>>input;
 
         // If print clocks
         if(input == 2){
@@ -210,12 +211,9 @@ int main() {
 
         }
 
-        else{
+        else if (input != 3) {
             std::cout<<"Invalid input! Please input again."<<std::endl;
         }
-
-        std::cout<<"Choose  0)add local event  1)add send event  2)print clock  3)quit :";
-        std::cin>>input;
     }
 
     // Kill/Join proc and comm
