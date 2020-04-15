@@ -62,7 +62,7 @@ void *procThread(void* arg) {
     std::string msg_str;
 
     while(true){
-        if(events.empty() == false){
+        if(!events.empty()){
             m = safe_pop();
             // if it is local event
             if(m.type() == 0){
@@ -71,7 +71,7 @@ void *procThread(void* arg) {
             }
             // if it is recv event
             else if(m.type() == 2){
-                std::cout << "Receive event (\"" << m.text() << "\") from Process " << m.src() << "\n";
+                std::cout << "Receive event: (\"" << m.text() << "\") from Process " << m.src() << "\n";
                 if(m.clock() > cur_clock + 1){
                     cur_clock = m.clock();
                 }else{
@@ -81,6 +81,7 @@ void *procThread(void* arg) {
             }
             // if it is send event
             else if(m.type() == 1){
+                std::cout << "Send event: (\"" << m.text() << "\") to Process " << m.dst() << "\n";
                 cur_clock += 1;
                 m.set_clock(cur_clock);
 
@@ -99,31 +100,27 @@ void *procThread(void* arg) {
 
 void *commThread(void* arg) {
     // Loop to listen and receive from the socket. Add a receive event to the std::queue if received
-    char buf[100];
-    char* bufptr = (char*) buf;
+    char buf[sizeof(Msg)];
     int to_read = sizeof(Msg), siz_read = 0;
     std::string msg_str;
     Msg m;
 
     while(true){
         // Receive message
-        while(to_read > 0){
-            siz_read = recv(sockfd, bufptr, to_read, 0);
+        while(to_read != 0){
+            siz_read = recv(sockfd, buf, sizeof(Msg), 0);
             if(siz_read < 0){
                 std::cerr<<"Error: commThread failed to recv the message!"<<std::endl;
                 exit(0);
             }
             to_read -= siz_read;
-            bufptr += siz_read;
+            msg_str.append(buf);
+            bzero(buf, sizeof(buf));
         }
         // Cast std::string to Msg
-        msg_str = std::string(buf);
         m.ParseFromString(msg_str);
         // Add a receive event to std::queue
-        if(safe_push(m) < 0){
-            std::cerr<<"Error: commThread failed to safe push to std::queue!"<<std::endl;
-            exit(0);
-        }
+        safe_push(m);
     }
 }
 
@@ -200,10 +197,7 @@ int main() {
             }
 
             // push event to std::queue
-            if(safe_push(m) < 0){
-                std::cerr<<"Error: mainThread failed to safe push to std::queue!"<<std::endl;
-                exit(0);
-            }
+            safe_push(m);
 
             // clear buf
             m.Clear();
