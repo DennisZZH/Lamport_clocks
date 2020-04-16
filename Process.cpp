@@ -69,7 +69,7 @@ void *procThread(void* arg) {
             //std::cout<<"After: Size of queue = "<<events.size()<<std::endl;
             // if it is local event
             if(m.type() == 0){
-                std::cout << "Local event: (\"" << m.text() << "\") of Process " << m.src() << "\n";
+                //std::cout << "Local event: (\"" << m.text() << "\") of Process " << m.src() << "\n";
                 cur_clock += 1;
                 m.set_clock(cur_clock);
             }
@@ -77,18 +77,18 @@ void *procThread(void* arg) {
             else if(m.type() == 2){
                 //std::cout << "Receive event: (\"" << m.text() << "\") from Process " << m.src() << "\n";
                 if(m.clock() > cur_clock + 1){
-                    cur_clock = m.clock();
+                    cur_clock = m.clock() + 1;
+
                 }else{
                     cur_clock += 1;
-                    m.set_clock(cur_clock);
                 }
+                m.set_clock(cur_clock);
             }
             // if it is send event
             else if(m.type() == 1){
                 //std::cout << "Send event: (\"" << m.text() << "\") to Process " << m.dst() << "\n";
                 cur_clock += 1;
                 m.set_clock(cur_clock);
-
                 m.SerializeToString(&msg_str);
                 if(send(sockfd, msg_str.c_str(), sizeof(Msg), 0) < 0){
                     std::cerr<<"Error: procThread failed to send the message!"<<std::endl;
@@ -176,6 +176,10 @@ int main() {
         
         std::cout<<"Choose  0)add local event  1)add send event  2)print clock  3)quit :";
         std::cin>>input;
+        if(std::cin.fail()){
+            std::cout<<"Illegal input! Abort."<<std::endl;
+            exit(0);
+        }
 
         // If print clocks
         if(input == 2){
@@ -214,11 +218,18 @@ int main() {
         else if (input != 3) {
             std::cout<<"Invalid input! Please input again."<<std::endl;
         }
+
     }
 
-    // Kill/Join proc and comm
+    // Kill/Join proc and comm, terminate network
+    m.Clear();
+    m.set_type(3);
+    m.set_clock(0);
+    m.set_text("");
+    send(sockfd, m.SerializeAsString().c_str(), sizeof(m), 0);
+
     pthread_kill(comm,SIGKILL);
     pthread_kill(proc,SIGKILL);
-
+   
     return 0;
 }

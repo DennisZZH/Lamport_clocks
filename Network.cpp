@@ -11,6 +11,7 @@
 #include <netdb.h> 
 #include <errno.h>
 #include "Msg.pb.h"
+#include <sys/time.h>	// for gettimeofday() 
 
 struct argus {
     int procNum;
@@ -23,13 +24,17 @@ void *manageProcesses(void* args) {
     argus* argu = (argus *)args;
     int procNum = argu->procNum;
     int cur_sockfd = argu->sockfd[procNum];
+    int r;
+    srand(time(0));
+    struct timeval start, end;
+
 
     // A while loop receiving from the corresponding process
     bool quit = false;
     char buffer[sizeof(Msg)];
     int read_size, sizeleft;
     while (!quit) {
-        std::cout << "Waiting and receving the message from process " << procNum + 1 << "...";
+        //std::cout << "Waiting and receving the message from process " << procNum + 1 << "...";
         sizeleft = sizeof(Msg);
         std::string strMessage;
         while (sizeleft != 0) {
@@ -41,7 +46,7 @@ void *manageProcesses(void* args) {
             sizeleft -= read_size;
             bzero(buffer, sizeof(buffer));
         }
-        std::cout << "Done!\n";
+        //std::cout << "Done!\n";
         Msg m;
         m.ParseFromString(strMessage);
 
@@ -69,7 +74,18 @@ void *manageProcesses(void* args) {
 
             // Send the message
             int send_size = 0;
-            std::cout << "Sending the message from " << m.src() << " to " << m.dst() << "...";
+            std::cout << "Waiting to send the message from " << m.src() << " to " << m.dst() << "......"<<std::endl;
+            
+            r = rand() % 5 + 1;
+            gettimeofday(&start, NULL);
+            while(true){
+                gettimeofday(&end, NULL);
+                long seconds = (end.tv_sec - start.tv_sec);
+                if(seconds >= r) break;
+                //std::cout<<"seconds = "<<seconds<<std::endl;
+            }
+        
+
             if ((send_size = send(send_socket, strMessage.c_str(), sizeof(Msg), 0)) < 0) {
                 std::cerr << "Failed\n";
                 exit(0);
