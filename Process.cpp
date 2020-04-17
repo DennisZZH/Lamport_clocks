@@ -76,7 +76,7 @@ void *procThread(void* arg) {
             // if it is recv event
             else if(m.type() == 2){
                 //std::cout << "Receive event: (\"" << m.text() << "\") from Process " << m.src() << "\n";
-                if(m.clock() > cur_clock + 1){
+                if(m.clock() > cur_clock){
                     cur_clock = m.clock() + 1;
 
                 }else{
